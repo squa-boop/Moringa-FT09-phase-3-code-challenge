@@ -1,70 +1,70 @@
-from database.setup import create_tables
-from database.connection import get_db_connection
+from database.connection import get_db, engine
 from models.article import Article
 from models.author import Author
 from models.magazine import Magazine
 
 def main():
-    # Initialize the database and create tables
+    # Create the tables if they do not exist
+    from database.setup import create_tables
     create_tables()
 
-    # Collect user input
-    author_name = input("Enter author's name: ")
-    magazine_name = input("Enter magazine name: ")
-    magazine_category = input("Enter magazine category: ")
-    article_title = input("Enter article title: ")
-    article_content = input("Enter article content: ")
+    # Collect user input (optional, can be used alongside sample data)
+    author_name = input("Enter author's name: ")  # User input for author name
+    magazine_name = input("Enter magazine name: ")  # User input for magazine name
+    magazine_category = input("Enter magazine category: ")  # User input for magazine category
+    article_title = input("Enter article title: ")  # User input for article title
+    article_content = input("Enter article content: ")  # User input for article content
+
+    # Sample data for testing (with your provided values)
+    authors_data = ["Blessed", "John Doe", "Jane Smith"]
+    magazines_data = [("National Geographic Science", "Science"), ("Nature Geography", "Geography")]
+    article_data = ("Exploring the Secrets of the Ocean", "This article explores the mysteries of the ocean.")
 
     # Connect to the database
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    db = next(get_db())
 
+    # Create authors using the SQLAlchemy ORM (from the sample authors data)
+    authors = []
+    for author_name in authors_data:
+        author = Author(name=author_name)
+        db.add(author)
+        db.commit()
+        db.refresh(author)  # Refresh to get the author's id
+        authors.append(author)  # Keep track of created authors for later use
 
-    '''
-        The following is just for testing purposes, 
-        you can modify it to meet the requirements of your implmentation.
-    '''
+    # Create magazines using the SQLAlchemy ORM (from the sample magazines data)
+    magazines = []
+    for magazine_name, magazine_category in magazines_data:
+        magazine = Magazine(name=magazine_name, category=magazine_category)
+        db.add(magazine)
+        db.commit()
+        db.refresh(magazine)  # Refresh to get the magazine's id
+        magazines.append(magazine)  # Keep track of created magazines for later use
 
-    # Create an author
-    cursor.execute('INSERT INTO authors (name) VALUES (?)', (author_name,))
-    author_id = cursor.lastrowid # Use this to fetch the id of the newly created author
+    # Create an article using the SQLAlchemy ORM (from the sample article data)
+    article_title, article_content = article_data
+    # For simplicity, we'll associate the first author and first magazine with the article
+    article = Article(title=article_title, content=article_content, author_id=authors[0].id, magazine_id=magazines[0].id)
+    db.add(article)
+    db.commit()
 
-    # Create a magazine
-    cursor.execute('INSERT INTO magazines (name, category) VALUES (?,?)', (magazine_name, magazine_category))
-    magazine_id = cursor.lastrowid # Use this to fetch the id of the newly created magazine
-
-    # Create an article
-    cursor.execute('INSERT INTO articles (title, content, author_id, magazine_id) VALUES (?, ?, ?, ?)',
-                   (article_title, article_content, author_id, magazine_id))
-
-    conn.commit()
-
-    # Query the database for inserted records. 
-    # The following fetch functionality should probably be in their respective models
-
-    cursor.execute('SELECT * FROM magazines')
-    magazines = cursor.fetchall()
-
-    cursor.execute('SELECT * FROM authors')
-    authors = cursor.fetchall()
-
-    cursor.execute('SELECT * FROM articles')
-    articles = cursor.fetchall()
-
-    conn.close()
+    # Query the database for inserted records using SQLAlchemy
+    magazines = db.query(Magazine).all()
+    authors = db.query(Author).all()
+    articles = db.query(Article).all()
 
     # Display results
     print("\nMagazines:")
     for magazine in magazines:
-        print(Magazine(magazine["id"], magazine["name"], magazine["category"]))
+        print(f"Magazine ID: {magazine.id}, Name: {magazine.name}, Category: {magazine.category}")
 
     print("\nAuthors:")
     for author in authors:
-        print(Author(author["id"], author["name"]))
+        print(f"Author ID: {author.id}, Name: {author.name}")
 
     print("\nArticles:")
     for article in articles:
-        print(Article(article["id"], article["title"], article["content"], article["author_id"], article["magazine_id"]))
+        print(f"Article ID: {article.id}, Title: {article.title}, Content: {article.content}, Author ID: {article.author_id}, Magazine ID: {article.magazine_id}")
 
 if __name__ == "__main__":
     main()
